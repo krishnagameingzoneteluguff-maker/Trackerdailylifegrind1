@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#111827">
+<title>AI DailyTracker</title>
+
+<style>
+body {
+  margin:0;
+  font-family:sans-serif;
+  background:linear-gradient(135deg,#111827,#1f2937);
+  color:white;
+  text-align:center;
+}
+
+.card {
+  background:rgba(255,255,255,0.05);
+  padding:15px;
+  margin:15px;
+  border-radius:15px;
+}
+
+input,select,button {
+  width:90%;
+  padding:12px;
+  margin-top:10px;
+  border:none;
+  border-radius:10px;
+}
+
+button { background:#22c55e; color:white; }
+
+.nav {
+  position:fixed;
+  bottom:0;
+  width:100%;
+  background:#020617;
+  display:flex;
+  justify-content:space-around;
+  padding:10px;
+}
+
+.nav button { background:none; color:white; font-size:18px; }
+
+.log {
+  background:#020617;
+  padding:10px;
+  margin-top:10px;
+  border-radius:10px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div id="loginPage">
+<h2>🔐 Secure App</h2>
+<input id="pin" type="password" placeholder="Enter PIN">
+<button onclick="login()">Enter</button>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none;">
+
+<h2>🔥 AI DailyTracker</h2>
+<h3 id="streak"></h3>
+
+<input id="search" placeholder="Search..." oninput="displayHistory()">
+
+<!-- HOME -->
+<div id="homeSection">
+<div class="card">
+
+<input type="time" id="start">
+<select id="startampm"><option>AM</option><option>PM</option></select>
+
+<input type="time" id="end">
+<select id="endampm"><option>AM</option><option>PM</option></select>
+
+<input id="task" placeholder="Task">
+
+<button onclick="addTask()">Add</button>
+<button onclick="aiCoach()">🤖 AI Coach</button>
+<button onclick="startVoice()">🎤 Voice</button>
+
+</div>
+</div>
+
+<!-- HISTORY -->
+<div id="historySection" style="display:none;">
+<div class="card">
+<div id="logs"></div>
+</div>
+</div>
+
+<!-- FUTURE -->
+<div id="futureSection" style="display:none;">
+<div class="card">
+
+<input id="futureTask" placeholder="Future Plan">
+<input type="date" id="futureDate">
+<button onclick="addFuture()">Add Plan</button>
+
+<div id="futureList"></div>
+
+</div>
+</div>
+
+</div>
+
+<!-- NAV -->
+<div class="nav">
+<button onclick="showHome()">🏠</button>
+<button onclick="showHistory()">📜</button>
+<button onclick="showFuture()">🚀</button>
+</div>
+
+<script>
+
+// LOGIN
+function login(){
+  let p = document.getElementById("pin").value.trim();
+  let saved = localStorage.getItem("pin");
+
+  if(!saved){
+    if(p.length<4) return alert("Set 4 digit PIN");
+    localStorage.setItem("pin",p);
+  } else {
+    if(p!==saved) return alert("Wrong PIN");
+  }
+
+  document.getElementById("loginPage").style.display="none";
+  document.getElementById("app").style.display="block";
+}
+
+// SAFE STORAGE
+function enc(d){ return btoa(JSON.stringify(d)); }
+function dec(d){ try{return JSON.parse(atob(d))}catch{return{}} }
+
+// DATA
+let today = new Date().toDateString();
+let data = localStorage.getItem("data") ? dec(localStorage.getItem("data")) : {};
+
+// STREAK
+let streak = localStorage.getItem("streak")||0;
+let last = localStorage.getItem("last");
+
+if(last!==today){
+  streak++;
+  localStorage.setItem("streak",streak);
+  localStorage.setItem("last",today);
+}
+document.getElementById("streak").innerText="🔥 Streak: "+streak;
+
+// TIME
+function convert(t,a){
+  let [h,m]=t.split(":").map(Number);
+  if(a==="PM"&&h!==12)h+=12;
+  if(a==="AM"&&h===12)h=0;
+  return h+":"+m;
+}
+
+// HOURS
+function hours(s,e){
+  let [sh,sm]=s.split(":").map(Number);
+  let [eh,em]=e.split(":").map(Number);
+  let start=sh+sm/60,end=eh+em/60;
+  if(end<start)end+=24;
+  return (end-start).toFixed(1);
+}
+
+// ADD TASK
+function addTask(){
+  let s=convert(start.value,startampm.value);
+  let e=convert(end.value,endampm.value);
+  let t=task.value;
+
+  if(!s||!e||!t) return alert("Fill all");
+
+  if(!data[today]) data[today]=[];
+
+  data[today].push({s,e,t,h:hours(s,e)});
+  localStorage.setItem("data",enc(data));
+
+  displayHistory();
+}
+
+// DISPLAY HISTORY
+function displayHistory(){
+  let q = document.getElementById("search").value.toLowerCase();
+  let html="";
+
+  Object.keys(data).reverse().forEach(d=>{
+    html+=`<b>${d}</b>`;
+    data[d].forEach((x,i)=>{
+      if(!x.t.toLowerCase().includes(q)) return;
+
+      html+=`
+      <div class="log">
+      ${x.s}-${x.e} (${x.h}h)<br>${x.t}
+      <br>
+      <button onclick="del('${d}',${i})">Delete</button>
+      </div>`;
+    });
+  });
+
+  document.getElementById("logs").innerHTML=html;
+}
+
+// DELETE
+function del(d,i){
+  data[d].splice(i,1);
+  localStorage.setItem("data",enc(data));
+  displayHistory();
+}
+
+// NAVIGATION (FIXED)
+function showHome(){
+  homeSection.style.display="block";
+  historySection.style.display="none";
+  futureSection.style.display="none";
+}
+
+function showHistory(){
+  homeSection.style.display="none";
+  historySection.style.display="block";
+  futureSection.style.display="none";
+  displayHistory();
+}
+
+function showFuture(){
+  homeSection.style.display="none";
+  historySection.style.display="none";
+  futureSection.style.display="block";
+  loadFuture();
+}
+
+// AI
+function aiCoach(){
+  let total=(data[today]||[]).reduce((a,b)=>a+parseFloat(b.h),0);
+
+  let msg =
+    total<3?"🔥 Work harder":
+    total<6?"⚡ Good":
+    total<9?"💪 Strong":
+    "🏆 Elite";
+
+  alert(msg);
+}
+
+// VOICE
+function startVoice(){
+  if(!('webkitSpeechRecognition' in window)){
+    alert("Voice not supported");
+    return;
+  }
+
+  let rec=new webkitSpeechRecognition();
+  rec.lang="en-IN";
+
+  rec.onresult=function(e){
+    task.value=e.results[0][0].transcript;
+  };
+
+  rec.start();
+}
+
+// FUTURE
+let futureData = JSON.parse(localStorage.getItem("futureData")) || [];
+
+function addFuture(){
+  let t=futureTask.value;
+  let d=futureDate.value;
+
+  if(!t||!d) return alert("Fill");
+
+  futureData.push({t,d});
+  localStorage.setItem("futureData",JSON.stringify(futureData));
+
+  loadFuture();
+}
+
+function loadFuture(){
+  let html="";
+  futureData.forEach(x=>{
+    html+=`<div class="log">${x.d} → ${x.t}</div>`;
+  });
+  futureList.innerHTML=html;
+}
+
+</script>
+
+</body>
+</html>
