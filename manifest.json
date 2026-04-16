@@ -1,0 +1,16 @@
+{
+  "name": "DailyTracker",
+  "short_name": "Tracker",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#111827",
+  "theme_color": "#111827",
+  "description": "Daily life tracking app",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
